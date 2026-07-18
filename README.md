@@ -25,7 +25,7 @@ Three mental models separate diffusion RL from LLM RL, and the whole project is 
 2. **One rollout is a heterogeneous pipeline** — text encoder → DiT (N compute-bound denoising steps) → VAE (one memory-bound decode) — with wildly different memory/compute profiles per stage
 3. **The reward is itself a model** (OCR scorer, VLM judge, aesthetic model), competing for GPUs with training — which makes reward deployment a first-class throughput concern
 
-Sister project to [Syncopate](https://github.com/ChaoyuWang04/Async-AgenticRL): that one studies RL infra under *long-tail* rollouts, this one under *heterogeneous* rollouts — together they cover the two frontier tensions of RL post-training systems.
+Sister project to [Syncopate](https://github.com/ChaoyuWang04/Syncopate_Async_AgenticRL): that one studies RL infra under *long-tail* rollouts, this one under *heterogeneous* rollouts — together they cover the two frontier tensions of RL post-training systems.
 
 Status: Phase-0 reconnaissance complete, reward module built and benchmarked, single-GPU smoke validated end-to-end; multi-GPU cloud training is next (see roadmap).
 
