@@ -1,6 +1,6 @@
 <!-- PROJECT LOGO -->
 <div align="center">
-  <a href="https://github.com/ChaoyuWang04/VeRL-Omni">
+  <a href="https://github.com/ChaoyuWang04/Darkroom_VeRL-Omni">
     <img src="images/logo.jpg" alt="Darkroom banner" width="100%">
   </a>
 
@@ -135,7 +135,7 @@ Issues and pull requests are welcome. The highest-leverage areas:
 
 ## Links
 
-- Project: [https://github.com/ChaoyuWang04/VeRL-Omni](https://github.com/ChaoyuWang04/VeRL-Omni)
+- Project: [https://github.com/ChaoyuWang04/Darkroom_VeRL-Omni](https://github.com/ChaoyuWang04/Darkroom_VeRL-Omni)
 - Author: [Chaoyu Wang](https://www.linkedin.com/in/samwang04/)
 
 ## License

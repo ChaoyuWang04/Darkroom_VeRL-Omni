@@ -2,7 +2,7 @@
 models/
 
 # 数据与产物（冒烟测试样例图除外，README 引用）
-data/
+data/*
 !data/smoke_qwen_image_gguf.png
 
 # Python 缓存
