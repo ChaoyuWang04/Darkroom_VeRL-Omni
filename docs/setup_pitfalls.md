@@ -64,12 +64,62 @@
 
 - **现象**：vllm-omni `requirements/common.txt` **硬钉 `diffusers==0.38.0`**；
   而计划/任务要求装 diffusers main（Qwen-Image/Z-Image 支持）。
-- **状态**：待安装阶段裁决。注意 verl PR #5297 自带 `verl/utils/diffusers/`（pipeline + SDE scheduler），
-  Qwen-Image pipeline 走的是 **verl 内置 + vllm_omni custom_pipeline**，未必依赖 diffusers main。
-- **倾向**：优先满足 vllm-omni 的 0.38.0 钉子（保证 import 不崩）；diffusers main 仅在确有缺失模型支持时
-  再单独处理，避免破坏 vllm-omni。最终方案见 `env_lock.md`。
+- **✅ 已裁决（2026-06-12）**：装 **diffusers 0.38.0**（满足 vllm-omni 硬钉），import 全通过。
+  verl PR #5297 自带 `verl/utils/diffusers/`（pipeline + SDE scheduler），Qwen-Image pipeline 走
+  **verl 内置 + vllm_omni custom_pipeline**，不依赖 diffusers main；如后续确有缺失模型支持再单独处理。
 
 ---
 
-## （待补）安装过程中实际遇到的报错
-> 安装 vllm/vllm-omni/verl 过程中的具体报错与解法，完成后补到此节。
+## P6. uv 经代理下载死锁（futex），1 小时零字节 ⚠️核心坑
+
+- **现象**：`uv pip install vllm==0.22.0 --torch-backend=cu129`（带 Clash 代理 7890）跑满 **1 小时**，
+  env / uv cache 大小**零增长**、输出文件全空。进程活着但 CPU 0.7% 空转，内核等待点 `futex_do_wait`。
+- **根因**：**不是网络问题**——代理连 download.pytorch.org → HTTP/2 200、清华 pypi → 200 都通，mihomo 正常。
+  是 **uv 0.11.16 经 mihomo 代理下载（大文件/高并发）时的内部死锁**（futex，疑似 tokio/reqwest 在代理下的竞态），
+  卡在用户态线程锁而非 socket recv，所以一个包都没下成。
+- **解决**：**剥离代理 + 国内镜像直连**。`env -u HTTPS_PROXY -u HTTP_PROXY -u ALL_PROXY … uv pip install …
+  --index-url https://mirrors.aliyun.com/pytorch-wheels/cu129 --extra-index-url 清华pypi`。
+  torch 大 wheel 走阿里云 `pytorch-wheels`（有 cu128/cu129/cu130），其余走清华 pypi（连 tilelang/xgrammar/
+  tokenspeed 都有镜像）。剥离代理后 **888ms 解析、几分钟装完**。
+- **教训**：呼应 P1/P2——**国内源直连、只有境外站才走代理**；uv 经代理下 GB 级 wheel 不稳，torch 一律走国内镜像。
+  诊断卡顿先看「**下载是否真在进行**」（cache/env 大小是否增长），而非只看进程是否存活——否则会像这次空跑 1 小时。
+
+## P7. CUDA 变体落到 cu130（非计划的 cu129），但 ABI 兼容 ✅
+
+- **现象**：阿里云 cu129 index + 清华 extra-index 装 torch，uv 在双 index 间选了清华的
+  **torch 2.11.0+cu130**（默认 wheel，带 nvidia-cu13 库），而非计划的 +cu129。
+- **根因**：清华 pypi 的 torch 2.11.0 默认 wheel 是 cu130 build；版本号与阿里云 +cu129 相同，
+  `--index-strategy unsafe-best-match` 下 uv 选了清华那个。
+- **裁决：实测后保留 cu130**。`get_device_capability()==(12,0)` + bf16 matmul OK；
+  `import vllm._C`（vllm 0.22 的 **cu129 预编译** kernel）在 cu130 上**无 undefined symbol** ——
+  CUDA 13 后向兼容 12.9，ABI 通过。故**不重装 cu129，省 2.7GB 重下**。
+- **教训**：**预编译优先 + 实测验证 > 纸面假设**（修正 P3 对 cu129 的预期）。ABI 兼容性用 `import vllm._C`
+  一行即可判定，不必为「变体不符预期」盲目重装。若必须 cu129：写 `torch==2.11.0+cu129`（local version 强制从阿里云取）。
+
+## P8. transformers 版本冲突 + vllm-omni 版本号 warning（自解 / 一行修）
+
+- **transformers**：vllm 0.22 单装时贪新到 **5.11.0**；装 vllm-omni（要 `<5.9`）时 uv **自动降到 5.8.1**
+  —— 这是 vllm(`≥4.56`) ∩ vllm-omni(`<5.9`) 的交集，两者兼容，import 全过，**无需手动干预**（P5 冲突自解）。
+- **vllm-omni 版本号 warning**：源码 editable 装出 `0.1.dev1`（**浅克隆缺 git tags**，setuptools_scm fallback），
+  触发「与 vllm 0.22 major/minor 不匹配」warning（**warn-only，不影响功能**）。
+  修法：重装时加 `VLLM_OMNI_VERSION_OVERRIDE=0.22.0` → 版本号正确、warning 消失。
+  （`git fetch --tags` 后因浅克隆 `git describe` 仍失败，故用 override 而非 unshallow。）
+
+---
+
+## P9. pr-5297（较老）调用了 vllm-omni 已改名的 API：`AsyncOmniEngineArgs` ⚠️训练前必修
+
+- **背景**：pr-5297 是 stacked PR 序列的合并分支，commit 较老（早于我们装的 vllm-omni `e26f5cb` @2026-06-11）。
+  Task 0.3-A 用「import 级符号比对」逐一核对 pr-5297 调用的 15 处 vllm_omni API，**14 处全通过，1 处漂移**。
+- **现象**：`verl/workers/rollout/vllm_rollout/vllm_omni_async_server.py`
+  - L29 `from vllm_omni.engine.arg_utils import AsyncOmniEngineArgs` → **ImportError**
+  - L350 `AsyncOmniEngineArgs.from_cli_args(args)`
+  - vllm-omni 现在的类名是 **`OmniAsyncEngineArgs`**（词序对调；`class OmniAsyncEngineArgs(AsyncEngineArgs, OmniEngineArgs)`，同一个类，`from_cli_args` 继承自 EngineArgs，可用）。
+- **影响面（非仅 async 路径）**：该文件由 `verl/workers/rollout/replica.py::_load_vllm_omni()`（rollout 模式 `vllm_omni` 的注册加载器）惰性 import。
+  4 个 FlowGRPO 脚本全部设 `actor_rollout_ref.rollout.name=vllm_omni`，故 **colocate 主路径（run_flowgrpo.sh）在 rollout init 时也会触发**，是训练 blocker。
+  好在 `replica.py` 顶层 import 不受影响（惰性 import），import verl 本身全通过。
+- **修法（2 行 rename，1:1 等价）**：`vllm_omni_async_server.py` 里 `AsyncOmniEngineArgs` → `OmniAsyncEngineArgs`（L29 + L350）。
+- **状态**：**未改上游**（Task 0.3 本地 smoke 不走 verl rollout 封装，故非本阶段关键路径）；
+  **记录在此，Phase 1 云端训练前应用此 patch**。深层「方法签名/属性级」漂移只能在 Phase 1 实跑 rollout 时才能完全暴露，import 级比对覆盖不到。
+- **教训**：pre-release「commit pin」下，上游 A（verl PR）较老 + 上游 B（vllm-omni main）滚动更新 → API 漂移必然存在；
+  `import 级符号逐一比对` 能廉价抓出「改名/删除」类漂移（呼应 P7 用 `import vllm._C` 一行判 ABI），但抓不到「同名不同签名」。

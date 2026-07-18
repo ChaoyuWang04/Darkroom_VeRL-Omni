@@ -1,0 +1,11 @@
+# 模型权重 / 大文件（66GB，绝不入库）
+models/
+
+# 数据与产物（冒烟测试样例图除外，README 引用）
+data/
+!data/smoke_qwen_image_gguf.png
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+.pytest_cache/
