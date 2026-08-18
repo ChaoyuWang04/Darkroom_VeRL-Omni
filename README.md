@@ -7,135 +7,114 @@
 <h3 align="center">Darkroom</h3>
 
 <p align="center">
-  RL post-training for diffusion models on verl — Flow-GRPO on Qwen-Image (20B DiT), where each rollout is a stochastic denoising trajectory instead of a token sequence. Evidence-based upstream reconnaissance, a drop-in local OCR reward replacing the GPU-hungry VLM judge at 27.8 img/s on CPU, and a validated single-GPU smoke path on RTX 5090.
+  Turning a subjective generative task into a verifiable one. Darkroom is an SFT + RL post-training system for <b>ad creative generation</b> — where "is this image good?" is replaced by a machine-checkable question: <b>can this image actually be shipped?</b>
   <br /><br />
-  | <a href="https://github.com/ChaoyuWang04/AdCampaignAgent-SFT/issues/new?labels=bug&template=bug-report---.md">Report Bug</a> |
-  <a href="https://github.com/ChaoyuWang04/AdCampaignAgent-SFT/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a> |
+  | <a href="https://github.com/ChaoyuWang04/Darkroom_VeRL-Omni/issues/new?labels=bug">Report Bug</a> |
+  <a href="https://github.com/ChaoyuWang04/Darkroom_VeRL-Omni/issues/new?labels=enhancement">Request Feature</a> |
 </p>
 
 </div>
 
 ## About
 
-In film photography, the invisible image recorded on exposed film is literally called the **latent image** — it only becomes a photograph in the darkroom, where the developer gradually pulls structure out of grain. Diffusion models do the same thing to their latents, and Darkroom studies what happens when you put that development process under reinforcement learning: the print gets graded (reward), and the chemistry gets adjusted (policy update).
+In film photography, the invisible image on exposed film is literally called the **latent image** — it only becomes a photograph in the darkroom, where the developer pulls structure out of grain. Diffusion models do the same to their latents. Darkroom studies what happens when you put that development process under reinforcement learning: the print gets graded, and the chemistry gets adjusted.
 
-Three mental models separate diffusion RL from LLM RL, and the whole project is organized around them:
+But grading is the whole problem. **Most image post-training projects stop at style transfer, because style has no verifier** — you can only eyeball it. Darkroom's premise is that this is a choice, not a limit:
 
-1. **The rollout is a denoising trajectory in continuous latent space**, not a token sequence. Flow-GRPO's core trick is converting the deterministic ODE sampler into an SDE so that per-step Gaussian transitions have a likelihood at all
-2. **One rollout is a heterogeneous pipeline** — text encoder → DiT (N compute-bound denoising steps) → VAE (one memory-bound decode) — with wildly different memory/compute profiles per stage
-3. **The reward is itself a model** (OCR scorer, VLM judge, aesthetic model), competing for GPUs with training — which makes reward deployment a first-class throughput concern
+> The axis that matters is not *generation vs. something else*. It is **unverifiable aesthetics vs. verifiable constraint satisfaction**.
 
-Sister project to [Syncopate](https://github.com/ChaoyuWang04/Syncopate_Async_AgenticRL): that one studies RL infra under *long-tail* rollouts, this one under *heterogeneous* rollouts — together they cover the two frontier tensions of RL post-training systems.
+Pick a capability that a program can grade, and image post-training becomes exactly as deep as any RLVR problem — arguably deeper, because the grader is a stack of detectors rather than a schema check.
 
-Status: Phase-0 reconnaissance complete, reward module built and benchmarked, single-GPU smoke validated end-to-end; multi-GPU cloud training is next (see roadmap).
+## The Task: Ad Creative Generation
 
-## Upstream Reconnaissance — Where the Code Actually Lives
+Given a product, a promo copy, a placement spec, and a brand guideline, produce an image that can be **shipped without a designer touching it**.
 
-All conclusions below come from cloned source at pinned commits, not from docs or second-hand posts. The headline finding:
+That single question decomposes into four machine-checkable ones:
 
-> **verl main contains no diffusion-RL training code.** `examples/README.md` advertises `flowgrpo_trainer/`, but the directory does not exist on main — the README landed before the code. The actual Flow-GRPO implementation lives in a stack of closed-but-unmerged PRs: **#5297** (trainer + full QwenImage pipeline), #5716 (diffusion agent-loop rollout), #5713 (image-based rewards). Building "main from source" gets you nothing; you must check out the PR stack.
+$$\text{deliverable} = \underbrace{\text{OCR exact match}}_{\text{copy}} \wedge \underbrace{\text{elements present}}_{\text{detector}} \wedge \underbrace{\text{layout legal}}_{\text{geometry}} \wedge \underbrace{\text{compliant}}_{\text{gate}}$$
 
-Model-selection verdict, by memory accounting and E2E coverage:
+Every term is a program. None of them is a human opinion. Aesthetics still gets measured — but at weight 0.05, as a **monitor against collapse**, never as the steering wheel, because aesthetic reward models are exactly what reward hacking eats first.
 
-| Decision | Verdict |
-|---|---|
-| Model + algorithm | **Qwen-Image (20B DiT) + Flow-GRPO + LoRA** — the only released, E2E-complete entry point |
-| Official minimum config | LoRA: **4 GPUs** · Full-FT: **8 GPUs** |
-| 4×5090 (128 GB) feasibility | LoRA viable but tight — the binding constraint was the VLM reward judge occupying a full GPU |
-| The unlock | The judge is just "VLM used as OCR + Levenshtein" → **replace it with local CPU OCR and reclaim the entire GPU** |
+## Why This Shape
 
-## The OCR Reward — Reclaiming the Judge GPU
+One image must satisfy many constraints **at once**, and the constraints pull against each other — longer copy is harder to render legibly; more required elements crowd the composition; a locked brand color shrinks the usable palette. That tension is where the gradient lives.
 
-`src/rewards/ocr_reward.py` re-implements the upstream `compute_score_ocr` scoring (`1 − Levenshtein(ocr, gt)/len(gt)`, verbatim-identical) on **RapidOCR with ONNX Runtime CPU** — chosen over PaddleOCR because it pip-installs cleanly on fresh environments and multi-processes well.
+This makes Darkroom the structural dual of its sister project [Syncopate](https://github.com/ChaoyuWang04/Syncopate_Async_AgenticRL), which studies agentic RL under long-tail tool-calling rollouts:
 
-Benchmarked on 512 rendered-text images (512×512, EN/CN/mixed), target ≥ 4 img/s so reward never bottlenecks a training step:
+|  | Syncopate | Darkroom |
+|---|---|---|
+| rollout | multi-step tool chain | **single-step** denoising trajectory |
+| process reward | yes | **none** — intermediate denoising steps aren't judgeable |
+| complexity from | **many steps** × per-step correctness | **one step** × **many simultaneous constraints** |
+| runtime | gateway, tools, approval | none — its "runtime" is **reward serving** |
 
-| Mode | Throughput | 512 images | mean_score |
-|---|---|---|---|
-| CPU ×1 process | 4.32 img/s | 118.6 s | 0.953 |
-| CPU ×4 pool | 13.75 img/s | 37.2 s | 0.953 |
-| CPU ×8 pool | **27.8 img/s** | 18.4 s | 0.953 |
+$$\textbf{multi-step} \times \textbf{single-constraint}\quad\longleftrightarrow\quad\textbf{single-step} \times \textbf{multi-constraint}$$
 
-**6.9× headroom over target, zero GPUs consumed** — the reward moved off the accelerator budget entirely.
+Together they cover the two frontier tensions of RL post-training systems. In business terms they also compose: Syncopate decides *what to run and how much to spend*; Darkroom decides *what the creative looks like*.
 
-## Single-GPU Smoke — The First Developed Print
+## Design Principles
 
-bf16 Qwen-Image cannot fit a 5090 (40.9 GB transformer + 16.6 GB text encoder vs 32 GB VRAM / 30 GB RAM), and online FP8 OOMs on the load transient. The working recipe is **GGUF Int4** (Q4_K_M transformer ≈ 13 GB), validated on sm_120:
+Three lines get drawn before any code:
 
-- 512×512, 10 steps: **1.40 s of diffusion (140 ms/step)**, peak VRAM 30.3/32.6 GB, exit 0
-- Prompt asks for the word "HELLO" → generated image → local OCR reward: **score = 1.000, recognized = 'HELLO'** — the full generate-then-grade loop closes end-to-end on one consumer GPU
+| What | Where it goes | Why |
+|---|---|---|
+| Subjective (is it pretty?) | **SFT data distribution** | Put it in the reward and you get the high-saturation, plastic "reward face" |
+| Objective (does it ship?) | **RL reward** | Program-checkable — the legitimate RLVR target |
+| Non-negotiable (compliance) | **Code gate** | A compliance incident can't depend on the model behaving |
 
-<div align="center">
-  <img src="data/smoke_qwen_image_gguf.png" alt="First developed print: HELLO, OCR score 1.000" width="320">
-  <br /><em>The first developed print — graded 1.000 by the local OCR reward.</em>
-</div>
+Two consequences worth stating up front:
 
-- Non-obvious trap documented: `--enable-cpu-offload` *breaks* this setup — the GGUF transformer pinned in RAM collides with the bf16 text encoder transiting RAM, and the OOM-killer silently SIGKILLs the worker
-- Also verified: the two community GGUF sources (city96 / QuantStack) are byte-identical in quant layout, checked per-tensor from file headers
+- **The sandbox can verify *shippability*, never *performance*.** Whether a creative earns its CTR is a signal that only exists after it runs. The ceiling here is "an executor that never needs rework," not "a creative director." That's an honest ceiling, and shippability is independently worth money — rework costs a designer half a day.
+- **Image SFT shifts a distribution; it does not teach an answer.** The flow-matching loss never changes from pretraining through SFT — only the data does. So SFT cannot teach a *judgment* like "this copy won't fit." That decision lives in a rule layer in front of the model, not in the weights.
 
-Environment is fully locked and reproduced (`docs/env_lock.md`): torch 2.11.0+cu130 with `get_device_capability() == (12, 0)` verified, plus a pitfall log (`docs/setup_pitfalls.md`) covering the mainland-China mirror/proxy discipline — domestic mirrors go direct, foreign sources go through the proxy, never mix.
+## Status
+
+**Design complete. Execution starts at the verifier.**
+
+This repository currently contains the design, not an implementation. The ordering is deliberate — the verifier *is* the reward, so a wrong verifier corrupts every training signal downstream:
+
+> **Define the goal → build the ruler → measure the ruler → make the data → train.**
+
+The base model is deliberately **not yet fixed**. It will be chosen by measurement in S2, on one criterion: which backbone leaves the most trainable headroom on our task grid. The strongest model at a task is not the best model to *train* on that task — a saturated cell has no gradient.
+
+## Roadmap
+
+| Stage | Content | Gate |
+|---|---|---|
+| **S1** | Verifier suite: compliance gate · OCR + gibberish · element/geometry · brand | ★ Verifier's own precision/recall must pass before anything trains |
+| **S2** | Base audit across candidate backbones — saturated / dead / trainable cells | Full grid coverage, frozen eval split, zero leakage |
+| **S3** | Data pipeline: programmatic rendering + VLM recaption, with an A/B proving recaption's effect | Rendered images must pass their own verifier |
+| **S4** | SFT — KPI is "can RL train on this," not "is the score high" | Dead-cell unlock, layout diversity, no catastrophic forgetting |
+| **S5** | Flow-GRPO on multi-constraint reward | Zero compliance hits, gradient alive, layout entropy intact |
+| **S6** | Evaluation report, write-up, upstream contributions | Every placeholder replaced by a measured number |
+
+Full task list with 58 scriptable acceptance criteria: [`docs/darkroom-task-checklist-v0.1.md`](docs/darkroom-task-checklist-v0.1.md)
 
 ## Repository Layout
 
 ```text
 Darkroom/
-├── src/rewards/              # local OCR reward, upstream-identical scoring (RapidOCR, CPU)
-├── tests/                    # reward correctness + throughput benchmark, text renderer
-├── scripts/                  # GGUF smoke driver (GPU-polite: waits, never kills other jobs)
-├── data/                     # smoke outputs (the first developed print lives here)
 ├── docs/
-│   ├── plan_1_verl_omni.md   # full project plan: phases, memory budgets, risk table
-│   ├── model_decision.md     # evidence-based model verdict + PR-stack archaeology
-│   ├── reward_benchmark.md   # OCR reward throughput study
-│   ├── qwen_image_smoke.md   # GGUF Int4 smoke recipe + cpu-offload trap
-│   ├── env_lock.md           # reproduced environment lock (sm_120)
-│   └── setup_pitfalls.md     # symptom → root cause → fix → lesson, per pitfall
-└── models/                   # local weights (gitignored)
+│   ├── darkroom-project-design-v0.1.md           # ★ scenario, verifier, reward, negative data
+│   ├── darkroom-task-checklist-v0.1.md           # ★ ordered tasks + quantified gates
+│   └── multimodal-gen-training-survey-2026-08.md # cross-modality training handbook
+├── images/                                        # branding
+├── models/                                        # local weights (gitignored)
+└── reference/                                     # external study material (gitignored)
 ```
-
-## Requirements
-
-- Python 3.12 · conda + `uv`
-- RTX 5090-class GPU (sm_120) with a cu130-matched PyTorch (2.11.0+cu130 locked in `docs/env_lock.md`)
-- `rapidocr-onnxruntime` + `python-Levenshtein` for the reward module (CPU only)
-- vllm-omni + verl PR-#5297 stack for the training path (see `docs/model_decision.md`)
-
-## Usage
-
-```sh
-# OCR reward: correctness against upstream scoring + throughput benchmark
-pytest tests/test_ocr_reward.py
-python tests/bench_ocr_throughput.py
-
-# Single-GPU Qwen-Image GGUF smoke (downloads GGUF, waits for a free GPU, then
-# generates a text-rendering image and grades it with the local OCR reward)
-bash scripts/run_qwen_image_gguf_smoke.sh
-```
-
-## Roadmap
-
-- [x] Upstream reconnaissance at pinned commits: Flow-GRPO lives in the PR-#5297 stack, not main
-- [x] Model verdict: Qwen-Image + Flow-GRPO + LoRA, official minimums confirmed (4 GPU LoRA / 8 GPU full)
-- [x] Local OCR reward, upstream-identical scoring, 27.8 img/s on CPU — judge GPU reclaimed
-- [x] Single-GPU GGUF Int4 smoke on sm_120, generate-then-grade loop closed (score = 1.000)
-- [x] Environment lock + pitfall log (proxy/mirror discipline, cpu-offload trap)
-- [ ] PR-#5297 stack checkout + dry-run of the data → rollout → reward → update path
-- [ ] Cloud 4×5090 Phase 1: Flow-GRPO + LoRA + OCR reward, first rising reward curve
-- [ ] Phase 2: 500+ step training, nsys time breakdown (rollout / reward / update / sync), async-reward on/off A/B
-- [ ] Reward-hacking study: how diffusion models cheat an OCR judge (expect image distortion with high OCR score)
-- [ ] Architecture deep-read: VeRL-Omni's intrusion points into verl's HybridFlow abstraction
-- [ ] Upstream issue/PR from pre-release potholes; stretch: Qwen-Omni (AR-DiT hybrid) RL path
 
 ## Contributing
 
 Issues and pull requests are welcome. The highest-leverage areas:
-- alternative lightweight rewards (aesthetic scorers, layout checkers) that stay off the GPU budget
-- memory recipes for Qwen-Image-class models on consumer GPUs
-- diffusion reward-hacking examples and countermeasures
+
+- lightweight, program-checkable rewards for generative tasks that stay off the GPU budget
+- detectors that stay accurate on **synthetic** imagery (most are trained on natural photos)
+- reward-hacking fingerprints for diffusion RL — the visual failure modes differ sharply from text
 
 ## Links
 
 - Project: [https://github.com/ChaoyuWang04/Darkroom_VeRL-Omni](https://github.com/ChaoyuWang04/Darkroom_VeRL-Omni)
+- Sister project: [Syncopate](https://github.com/ChaoyuWang04/Syncopate_Async_AgenticRL)
 - Author: [Chaoyu Wang](https://www.linkedin.com/in/samwang04/)
 
 ## License
