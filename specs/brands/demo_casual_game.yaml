@@ -1,0 +1,7 @@
+# Placeholder brand used by tests and by the programmatic renderer (T3.1)
+# until real brand guidelines are available.
+brand_id: demo_casual_game
+primary_hex: "#E63946"
+delta_e_max: 6.0          # CIEDE2000; ~6 is "noticeable but arguably on-brand"
+font_family: "Noto Sans SC"
+logo_asset: ""

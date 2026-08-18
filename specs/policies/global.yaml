@@ -1,0 +1,86 @@
+# Baseline content policy — the red lines every mainstream ad platform enforces.
+#
+# SCOPE NOTE. This list is representative, not exhaustive, and it is not meant
+# to become exhaustive by hand. A hand-maintained blocklist rots and always
+# under-covers; production should mount a maintained source (platform policy
+# exports, an open moderation lexicon) and keep this file for the categories,
+# the structure, and the local additions. What matters architecturally is that
+# every entry carries a category, because the verdict has to say *why* it
+# blocked — an unexplained rejection is not actionable.
+#
+# `evasion: true` opts a term into separator-tolerant matching (f.u.c.k). It is
+# per-term because a blanket evasion pass cannot hold precision >= 0.90 (A1.2).
+region: global
+source: "Common denominator of Meta / TikTok / Google / AppLovin published ad policies"
+version: "2026Q3.0"
+valid_to: 2026-11-30
+
+# Categories the image-side checker must screen for. The classifier is a later
+# task; until it is mounted, verdicts report image_checked=false rather than
+# quietly claiming the image is clean.
+banned_visual_categories:
+  - nudity
+  - sexual_activity
+  - gore
+  - graphic_violence
+  - weapon_threat
+  - drug_use
+  - self_harm
+  - minor_sexualization
+  - shocking_imagery
+
+terms:
+  # --- adult -------------------------------------------------------------
+  - {term: "porn",        category: adult, evasion: true}
+  - {term: "pornographic", category: adult}
+  - {term: "xxx",         category: adult}
+  - {term: "nude",        category: adult}
+  - {term: "nudes",       category: adult}
+  - {term: "escort service", category: adult}
+  - {term: "hookup tonight", category: adult, note: "solicitation phrasing"}
+  - {term: "成人内容",     category: adult}
+  - {term: "裸聊",         category: adult}
+  - {term: "约炮",         category: adult}
+
+  # --- violence ----------------------------------------------------------
+  - {term: "gore",        category: violence}
+  - {term: "beheading",   category: violence}
+  - {term: "mutilation",  category: violence}
+  - {term: "kill yourself", category: violence, evasion: true}
+  - {term: "血腥",         category: violence}
+  - {term: "斩首",         category: violence}
+  - {term: "虐杀",         category: violence}
+
+  # --- hate / discrimination --------------------------------------------
+  # Slur lexicons belong in a maintained external source, not in this file.
+  # These entries cover the non-slur phrasings that clear a slur filter.
+  - {term: "racially inferior", category: hate}
+  - {term: "ethnic cleansing",  category: hate}
+  - {term: "种族清洗",           category: hate}
+
+  # --- illegal goods -----------------------------------------------------
+  - {term: "buy cocaine",  category: illegal}
+  - {term: "buy weed",     category: illegal}
+  - {term: "unregistered firearm", category: illegal}
+  - {term: "fake passport", category: illegal}
+  - {term: "counterfeit luxury", category: illegal}
+  - {term: "代开发票",      category: illegal}
+  - {term: "枪支出售",      category: illegal}
+
+  # --- self-harm ---------------------------------------------------------
+  - {term: "how to self harm", category: self_harm}
+  - {term: "suicide method",   category: self_harm}
+  - {term: "自杀方法",          category: self_harm}
+
+  # --- minors ------------------------------------------------------------
+  - {term: "underage girls", category: minors}
+  - {term: "teen nude",      category: minors}
+  - {term: "未成年裸",        category: minors}
+
+  # --- gambling ----------------------------------------------------------
+  # Not universally banned, but universally restricted; blocking by default and
+  # allowlisting per campaign is the safer direction of error.
+  - {term: "guaranteed jackpot", category: gambling}
+  - {term: "risk free betting",  category: gambling}
+  - {term: "包赢",               category: gambling}
+  - {term: "百分百中奖",          category: gambling}

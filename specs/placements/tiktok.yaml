@@ -1,0 +1,29 @@
+# TikTok placement specs — v0
+#
+# TikTok's in-feed chrome is heavier than Meta's: the right-hand action rail
+# (avatar / like / comment / share) and the bottom caption block both sit on
+# the creative, which is why the right and bottom margins are large.
+platform: tiktok
+source: "TikTok for Business creative guidelines (public), read 2026-08-18"
+version: "2026Q3.0"
+valid_to: 2026-11-30
+
+sizes:
+  # In-feed vertical — the primary placement.
+  - size: 1080x1920
+    safe_zone: {top: 130, bottom: 480, left: 60, right: 240}
+    text_max_ratio: 0.18
+    required_elements: [product, logo, cta]
+    logo: {anchor: top_left, min_size_pct: 0.06}
+
+  - size: 1080x1080
+    safe_zone: {top: 50, bottom: 50, left: 50, right: 50}
+    text_max_ratio: 0.20
+    required_elements: [product, logo, cta]
+    logo: {anchor: any, min_size_pct: 0.06}
+
+  - size: 1920x1080
+    safe_zone: {top: 40, bottom: 40, left: 40, right: 40}
+    text_max_ratio: 0.20
+    required_elements: [product, logo]
+    logo: {anchor: any, min_size_pct: 0.05}
