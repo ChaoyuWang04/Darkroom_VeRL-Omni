@@ -13,3 +13,13 @@ from .l3_layout import (  # noqa: F401
     LayoutViolation,
     union_area,
 )
+from .reward import (  # noqa: F401
+    CAPS,
+    COMPONENT_WEIGHTS,
+    HARD_CHECKS,
+    CapHit,
+    ComponentScore,
+    RewardAssembler,
+    RewardBreakdown,
+    RewardConfigError,
+)
