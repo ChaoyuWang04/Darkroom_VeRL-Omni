@@ -1,0 +1,49 @@
+# China content policy = global baseline + 广告法 claim restrictions.
+#
+# The claim categories below are what makes CN different in practice. 《广告法》
+# 第九条 bans superlative/absolute claims outright — "最好" in a promo headline
+# is a legal violation, not a taste question. That is precisely the kind of rule
+# that belongs in a gate rather than a score, and precisely the kind that a
+# model trained only on US-style creative will happily generate.
+#
+# These matter to us more than they might elsewhere: our primary anchor is that
+# the requested copy renders *exactly*, so a banned phrase in the copy field
+# would otherwise be faithfully painted into the image at full fidelity.
+region: cn
+extends: global
+source: "《中华人民共和国广告法》(2021 修正) 第九条/第十六条/第二十五条 + 平台细则"
+version: "2026Q3.0"
+valid_to: 2026-11-30
+
+banned_visual_categories:
+  - national_symbol_misuse
+
+terms:
+  # --- 绝对化用语（广告法 §9）--------------------------------------------
+  - {term: "国家级", category: absolute_claim, note: "广告法 §9 明令禁止"}
+  - {term: "最高级", category: absolute_claim}
+  - {term: "最佳",   category: absolute_claim}
+  - {term: "最好",   category: absolute_claim}
+  - {term: "最优",   category: absolute_claim}
+  - {term: "最便宜", category: absolute_claim}
+  - {term: "第一品牌", category: absolute_claim}
+  - {term: "全国第一", category: absolute_claim}
+  - {term: "世界第一", category: absolute_claim}
+  - {term: "顶级",   category: absolute_claim}
+  - {term: "绝无仅有", category: absolute_claim}
+  - {term: "史无前例", category: absolute_claim}
+  - {term: "独一无二", category: absolute_claim}
+
+  # --- 医疗/功效宣称（广告法 §16/§17）------------------------------------
+  - {term: "根治",     category: medical_claim}
+  - {term: "药到病除", category: medical_claim}
+  - {term: "无副作用", category: medical_claim}
+  - {term: "包治百病", category: medical_claim}
+  - {term: "治愈率",   category: medical_claim}
+
+  # --- 金融宣称（广告法 §25）---------------------------------------------
+  - {term: "保本",   category: financial_claim}
+  - {term: "稳赚",   category: financial_claim}
+  - {term: "零风险", category: financial_claim}
+  - {term: "保证收益", category: financial_claim}
+  - {term: "无风险投资", category: financial_claim}

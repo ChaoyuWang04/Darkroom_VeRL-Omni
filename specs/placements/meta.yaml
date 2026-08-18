@@ -1,0 +1,35 @@
+# Meta (Facebook / Instagram) placement specs — v0
+#
+# Values are read from Meta's public Ads Guide. They are a STARTING POINT, not
+# ground truth: the rules that actually bite in delivery routinely differ from
+# the published ones. `valid_to` forces a re-check rather than letting a stale
+# number quietly become training signal.
+platform: meta
+source: "Meta Ads Guide (public), read 2026-08-18"
+version: "2026Q3.0"
+valid_to: 2026-11-30
+
+sizes:
+  # Square feed. Almost no platform chrome, so the safe zone is a modest bleed
+  # margin rather than a UI carve-out.
+  - size: 1080x1080
+    safe_zone: {top: 40, bottom: 40, left: 40, right: 40}
+    text_max_ratio: 0.20
+    required_elements: [product, logo, cta]
+    logo: {anchor: any, min_size_pct: 0.06}
+
+  # Stories / Reels. The large top and bottom margins are real UI overlay:
+  # profile row and caption/CTA sit on top of the creative. This is the size
+  # where "copy physically does not fit" (behavior `degrade`) shows up most.
+  - size: 1080x1920
+    safe_zone: {top: 250, bottom: 340, left: 60, right: 60}
+    text_max_ratio: 0.20
+    required_elements: [product, logo, cta]
+    logo: {anchor: top_left, min_size_pct: 0.06}
+
+  # Link / right-column landscape.
+  - size: 1200x628
+    safe_zone: {top: 30, bottom: 30, left: 30, right: 30}
+    text_max_ratio: 0.20
+    required_elements: [product, logo]
+    logo: {anchor: any, min_size_pct: 0.05}
