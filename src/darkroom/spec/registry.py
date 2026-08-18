@@ -97,6 +97,7 @@ class SpecRegistry:
                     height=height,
                     safe_zone=SafeZone(**entry.get("safe_zone", {})),
                     text_max_ratio=float(_require(entry, "text_max_ratio", where)),
+                    text_ratio_severity=entry.get("text_ratio_severity", "soft"),
                     required_elements=tuple(_require(entry, "required_elements", where)),
                     logo=LogoRule(**entry.get("logo", {})),
                     source=source,
