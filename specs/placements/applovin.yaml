@@ -1,28 +1,36 @@
-# AppLovin placement specs — v0
+# AppLovin placement specs
 #
-# In-app interstitials render edge to edge with a close button in one corner.
-# Chrome is lighter than social feeds, but the close-button corner must stay
-# clear, which is why the logo anchor avoids top_right here.
+# ⚠️ WEAKEST RECORD IN THE TABLE — READ BEFORE TRUSTING.
+#
+# AppLovin publishes the supported canvas sizes (portrait 1080x1920, landscape
+# 1920x1080) but does NOT publish safe-area margins. Their guidance is
+# qualitative: the close button, "Ad" label and CTA button overlay the creative,
+# and advertisers are told to check that critical elements are not obscured.
+#
+# The margins below are therefore ESTIMATED from that description, not read off
+# a spec sheet. They are the least trustworthy numbers in the spec tree, and any
+# disagreement between the verifier and a human reviewer on AppLovin creatives
+# should suspect these values first. Measure against real rendered placements
+# and replace them.
 platform: applovin
-source: "AppLovin creative spec sheet (public), read 2026-08-18"
-version: "2026Q3.0"
-valid_to: 2026-11-30
+source: "AppLovin creative specs (canvas sizes published; ESTIMATED safe zones — see header)"
+version: "2026Q3.1-estimated"
+valid_to: 2026-10-31   # deliberately shorter than the others: force an early re-check
 
 sizes:
-  - size: 1080x1080
-    safe_zone: {top: 100, bottom: 40, left: 40, right: 40}
-    text_max_ratio: 0.25
-    required_elements: [product, cta]
-    logo: {anchor: top_left, min_size_pct: 0.05}
-
+  # Portrait interstitial. Top margin clears the close button / Ad label row;
+  # bottom clears the CTA button.
   - size: 1080x1920
     safe_zone: {top: 120, bottom: 200, left: 50, right: 50}
     text_max_ratio: 0.25
+    text_ratio_severity: soft
     required_elements: [product, cta]
     logo: {anchor: top_left, min_size_pct: 0.05}
 
+  # Landscape interstitial.
   - size: 1920x1080
-    safe_zone: {top: 100, bottom: 40, left: 40, right: 40}
+    safe_zone: {top: 100, bottom: 140, left: 40, right: 40}
     text_max_ratio: 0.25
+    text_ratio_severity: soft
     required_elements: [product, cta]
     logo: {anchor: bottom_left, min_size_pct: 0.04}

@@ -1,35 +1,50 @@
-# Meta (Facebook / Instagram) placement specs — v0
+# Meta (Facebook / Instagram) placement specs
 #
-# Values are read from Meta's public Ads Guide. They are a STARTING POINT, not
-# ground truth: the rules that actually bite in delivery routinely differ from
-# the published ones. `valid_to` forces a re-check rather than letting a stale
-# number quietly become training signal.
+# Safe-zone values verified against published 2026 guidance. As of March 2026
+# Meta unified Stories and Reels into one 9:16 safe zone; the values below take
+# the MOST RESTRICTIVE side of each pair (Stories' 250px top, Reels' 320px
+# bottom and 120px right action rail), so one creative clears both.
+#
+# text_max_ratio is SOFT here on purpose. Meta retired the hard 20% text rule in
+# 2020 — exceeding it is not a rejection, it is a delivery penalty. Treating it
+# as a gate would fail images the platform would happily run.
 platform: meta
-source: "Meta Ads Guide (public), read 2026-08-18"
-version: "2026Q3.0"
+source: "Meta Ads Guide + published 2026 safe-zone guidance (Stories/Reels unified, Mar 2026)"
+version: "2026Q3.1"
 valid_to: 2026-11-30
 
 sizes:
-  # Square feed. Almost no platform chrome, so the safe zone is a modest bleed
-  # margin rather than a UI carve-out.
+  # 1:1 feed. Minimal chrome — the margin is a bleed allowance, not a UI carve-out.
   - size: 1080x1080
     safe_zone: {top: 40, bottom: 40, left: 40, right: 40}
     text_max_ratio: 0.20
+    text_ratio_severity: soft
     required_elements: [product, logo, cta]
     logo: {anchor: any, min_size_pct: 0.06}
 
-  # Stories / Reels. The large top and bottom margins are real UI overlay:
-  # profile row and caption/CTA sit on top of the creative. This is the size
-  # where "copy physically does not fit" (behavior `degrade`) shows up most.
-  - size: 1080x1920
-    safe_zone: {top: 250, bottom: 340, left: 60, right: 60}
+  # 4:5 feed — the tallest format the main feed will render without cropping,
+  # and the most common Meta static size in practice.
+  - size: 1080x1350
+    safe_zone: {top: 40, bottom: 40, left: 40, right: 40}
     text_max_ratio: 0.20
+    text_ratio_severity: soft
+    required_elements: [product, logo, cta]
+    logo: {anchor: any, min_size_pct: 0.06}
+
+  # 9:16 Stories/Reels (unified). Top 250 comes from Stories, bottom 320 and
+  # right 120 from Reels. This is the size where copy most often physically
+  # cannot fit, i.e. where behavior `degrade` fires.
+  - size: 1080x1920
+    safe_zone: {top: 250, bottom: 320, left: 60, right: 120}
+    text_max_ratio: 0.20
+    text_ratio_severity: soft
     required_elements: [product, logo, cta]
     logo: {anchor: top_left, min_size_pct: 0.06}
 
-  # Link / right-column landscape.
+  # 1.91:1 link / right column.
   - size: 1200x628
     safe_zone: {top: 30, bottom: 30, left: 30, right: 30}
     text_max_ratio: 0.20
+    text_ratio_severity: soft
     required_elements: [product, logo]
     logo: {anchor: any, min_size_pct: 0.05}

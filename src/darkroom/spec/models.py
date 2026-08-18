@@ -82,6 +82,16 @@ class PlacementSpec:
     source: str
     version: str
     valid_to: date
+    text_ratio_severity: str = "soft"
+    """Whether exceeding `text_max_ratio` blocks delivery or merely costs reach.
+
+    Defaults to soft because that is the current reality: Meta retired its hard
+    20% text rule in 2020, and heavy text now buys reduced delivery rather than
+    a rejection. Gating on it would fail creatives the platform would run —
+    which is the wrong direction of error for a metric named "deliverable".
+    """
+
+    SEVERITIES = ("hard", "soft")
 
     def __post_init__(self) -> None:
         if self.width <= 0 or self.height <= 0:
@@ -90,6 +100,11 @@ class PlacementSpec:
             raise SpecInvalid(f"size {self.size!r} disagrees with {self.width}x{self.height}")
         if not 0.0 < self.text_max_ratio <= 1.0:
             raise SpecInvalid("text_max_ratio must be in (0, 1]")
+        if self.text_ratio_severity not in self.SEVERITIES:
+            raise SpecInvalid(
+                f"text_ratio_severity must be one of {self.SEVERITIES}, "
+                f"got {self.text_ratio_severity!r}"
+            )
         if not self.required_elements:
             raise SpecInvalid("required_elements must not be empty")
         sz = self.safe_zone

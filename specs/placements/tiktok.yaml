@@ -1,29 +1,38 @@
-# TikTok placement specs — v0
+# TikTok placement specs
 #
-# TikTok's in-feed chrome is heavier than Meta's: the right-hand action rail
-# (avatar / like / comment / share) and the bottom caption block both sit on
-# the creative, which is why the right and bottom margins are large.
+# In-feed margins verified against published 2026 guidance: 130 top, 484 bottom,
+# 140 right, 44 left. The bottom is the large one — caption, comment row and
+# product tags all stack there. The right margin covers the action rail
+# (avatar / like / comment / share).
+#
+# KNOWN GAP: TikTok does not render identically across devices, and Shop
+# placements tighten the bottom by a further 80-100px. The values below are the
+# non-Shop baseline; a Shop-specific record should be added before running Shop
+# campaigns rather than shaving the general one.
 platform: tiktok
-source: "TikTok for Business creative guidelines (public), read 2026-08-18"
-version: "2026Q3.0"
+source: "TikTok for Business creative guidelines + published 2026 safe-zone guidance"
+version: "2026Q3.1"
 valid_to: 2026-11-30
 
 sizes:
   # In-feed vertical — the primary placement.
   - size: 1080x1920
-    safe_zone: {top: 130, bottom: 480, left: 60, right: 240}
+    safe_zone: {top: 130, bottom: 484, left: 44, right: 140}
     text_max_ratio: 0.18
+    text_ratio_severity: soft
     required_elements: [product, logo, cta]
     logo: {anchor: top_left, min_size_pct: 0.06}
 
   - size: 1080x1080
     safe_zone: {top: 50, bottom: 50, left: 50, right: 50}
     text_max_ratio: 0.20
+    text_ratio_severity: soft
     required_elements: [product, logo, cta]
     logo: {anchor: any, min_size_pct: 0.06}
 
   - size: 1920x1080
     safe_zone: {top: 40, bottom: 40, left: 40, right: 40}
     text_max_ratio: 0.20
+    text_ratio_severity: soft
     required_elements: [product, logo]
     logo: {anchor: any, min_size_pct: 0.05}
