@@ -39,7 +39,7 @@ Every term is a program. None of them is a human opinion. Aesthetics still gets 
 
 One image must satisfy many constraints **at once**, and the constraints pull against each other — longer copy is harder to render legibly; more required elements crowd the composition; a locked brand color shrinks the usable palette. That tension is where the gradient lives.
 
-This makes Darkroom the structural dual of its sister project [Syncopate](https://github.com/ChaoyuWang04/Syncopate_Async_AgenticRL), which studies agentic RL under long-tail tool-calling rollouts:
+This makes Darkroom the structural dual of its sister project [Syncopate](https://github.com/ChaoyuWang04/Syncopate-AgenticRL), which studies agentic RL under long-tail tool-calling rollouts:
 
 |  | Syncopate | Darkroom |
 |---|---|---|
@@ -114,7 +114,7 @@ Issues and pull requests are welcome. The highest-leverage areas:
 ## Links
 
 - Project: [https://github.com/ChaoyuWang04/Darkroom_VeRL-Omni](https://github.com/ChaoyuWang04/Darkroom_VeRL-Omni)
-- Sister project: [Syncopate](https://github.com/ChaoyuWang04/Syncopate_Async_AgenticRL)
+- Sister project: [Syncopate](https://github.com/ChaoyuWang04/Syncopate-AgenticRL)
 - Author: [Chaoyu Wang](https://www.linkedin.com/in/samwang04/)
 
 ## License
